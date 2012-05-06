@@ -12,6 +12,7 @@ Rules.
 {{\^ : {token,{'{{^',TokenLine}}.
 {{{  : {token,{'{{{',TokenLine}}.
 {{>  : {token,{'{{>',TokenLine}}.
+{{&  : {token,{'{{&',TokenLine}}.
 \s*{Key}\s*}} : {token,{key,TokenLine,?key(TokenChars,TokenLen)},"}}"}.
 }}   : {token,{'}}',TokenLine}}.
 }}}  : {token,{'}}}',TokenLine}}.
