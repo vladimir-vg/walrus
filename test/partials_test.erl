@@ -18,7 +18,7 @@ basic_test() ->
                  "Drinks:\n\n"
                  "    - Beer, 5\n\n"
                  "    - Juice, 8\n">>,
-    Expected = walrus:render(Template, Context, [{hello, HelloTemplate}]).
+    Expected = walrus:render(Template, Context, [{hello, walrus:compile(HelloTemplate)}]).
 
 nested_test() ->
     MainTemplate = "My name is {{name}}\n"
@@ -33,7 +33,8 @@ nested_test() ->
                  [{name, "San Jose"}, {country, "USA"}, {description, "Very interesting place"}],
                  [{name, "Kiev"}, {country, "Ukraine"}, {description, "Great place"}]
     ]}],
-    PartialsContext = [{place_item, PlaceItemTemplate}, {place_description, PlaceDescTemplate}],
+    PartialsContext = [{place_item, walrus:compile(PlaceItemTemplate)},
+                       {place_description, walrus:compile(PlaceDescTemplate)}],
     Expected = <<"My name is Vladimir\n"
                  "I plan to travel into following places:\n\n"
                  "  San Jose (USA): Very interesting place\n\n"

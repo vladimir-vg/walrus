@@ -73,11 +73,6 @@ render_iolist([{inverse, Key, SubParseTree} | ParseTree], Context, PartialsConte
 render_iolist([{partial, Key} | ParseTree], Context, PartialsContext, Acc) ->
     Value = proplists:get_value(Key, PartialsContext),
     case Value of
-        Template when is_list(Template); is_binary(Template) ->
-            {ok, Tokens, _} = walrus_lexer:string(Template),
-            {ok, PartialParseTree} = walrus_parser:parse(Tokens),
-            IOList = render_iolist(PartialParseTree, Context, PartialsContext, []),
-            render_iolist(ParseTree, Context, PartialsContext, [ IOList | Acc]);
         Fun when is_function(Fun, 2) ->
             Output = Fun(Context, PartialsContext),
             render_iolist(ParseTree, Context, PartialsContext, [ Output | Acc]);
