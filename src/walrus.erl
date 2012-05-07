@@ -71,7 +71,7 @@ render_iolist([{inverse, Key, SubParseTree} | ParseTree], Context, PartialsConte
             render_iolist(ParseTree, Context, PartialsContext, Acc)
     end;
 render_iolist([{partial, Key} | ParseTree], Context, PartialsContext, Acc) ->
-    Value = get(Key, PartialsContext),
+    Value = proplists:get_value(Key, PartialsContext),
     case Value of
         Template when is_list(Template); is_binary(Template) ->
             {ok, Tokens, _} = walrus_lexer:string(Template),
@@ -80,7 +80,9 @@ render_iolist([{partial, Key} | ParseTree], Context, PartialsContext, Acc) ->
             render_iolist(ParseTree, Context, PartialsContext, [ IOList | Acc]);
         Fun when is_function(Fun, 2) ->
             Output = Fun(Context, PartialsContext),
-            render_iolist(ParseTree, Context, PartialsContext, [ Output | Acc])
+            render_iolist(ParseTree, Context, PartialsContext, [ Output | Acc]);
+        undefined ->
+            render_iolist(ParseTree, Context, PartialsContext, Acc)
     end;
 render_iolist([], _Context, _PartialsContext, Acc) ->
     lists:reverse(Acc).
