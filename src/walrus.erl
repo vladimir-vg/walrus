@@ -1,5 +1,6 @@
 -module(walrus).
 -author("Devin Torres <devin@devintorres.com>").
+-author("Gordeev Vladimir <gordeev.vladimir.v@gmail.com>").
 
 -export([compile/1, render/2, render/3]).
 
