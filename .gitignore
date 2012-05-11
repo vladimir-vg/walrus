@@ -1,3 +1,5 @@
+# text editor
+.redcar
 .eunit
 .dialyzer_plt
 src/walrus_lexer.erl
