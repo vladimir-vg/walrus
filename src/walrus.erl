@@ -7,13 +7,6 @@
     (V =:= false orelse V =:= [] orelse V =:= undefined orelse V =:= null)).
 -define(DEFAULT_VALUE, "").
 
--type value() :: list() | binary() | integer() | float() | atom().
--type context() :: [{Key :: string(), Value :: value()}, ...].
--type stringifiable() :: value() | fun((Context :: context())
-    -> value()).
-
--spec compile(Template :: list() | binary()) ->
-    fun((Context :: context(), PartialsContext :: context()) -> binary()).
 compile(Template) when is_binary(Template) ->
     compile(binary_to_list(Template));
 compile(Template) when is_list(Template) ->
@@ -24,13 +17,9 @@ compile(Template) when is_list(Template) ->
         iolist_to_binary(IOList)
     end.
 
--spec render(Template :: list() | binary(), Context :: context())
-    -> binary().
 render(Template, Context) ->
     render(Template, Context, []).
 
--spec render(Template :: list() | binary(), Context :: context(), PartialsContext :: context())
-    -> binary().
 render(Template, Context, PartialsContext) when is_binary(Template) ->
     render(binary_to_list(Template), Context, PartialsContext);
 render(Template, Context, PartialsContext) when is_list(Template) ->
@@ -39,8 +28,6 @@ render(Template, Context, PartialsContext) when is_list(Template) ->
     IOList = render_iolist(ParseTree, Context, PartialsContext, []),
     iolist_to_binary(IOList).
 
--spec render_iolist(ParseTree :: list(), Context :: context(), PartialsContext :: context(), Acc :: list())
-    -> binary().
 render_iolist([{text, Text} | ParseTree], Context, PartialsContext, Acc) ->
     render_iolist(ParseTree, Context, PartialsContext, [Text | Acc]);
 render_iolist([{var, Key} | ParseTree], Context, PartialsContext, Acc) ->
@@ -82,7 +69,6 @@ render_iolist([{partial, Key} | ParseTree], Context, PartialsContext, Acc) ->
 render_iolist([], _Context, _PartialsContext, Acc) ->
     lists:reverse(Acc).
 
--spec get(Key :: atom(), Context :: context()) -> stringifiable().
 get(Key, Context) ->
     Value = proplists:get_value(Key, Context, ?DEFAULT_VALUE),
     if
@@ -90,8 +76,6 @@ get(Key, Context) ->
         true -> Value
     end.
 
--spec stringify(Value :: stringifiable(), Context :: context(), Escape :: boolean())
-    -> iolist().
 stringify(Value, _Context, false) when is_list(Value) ->
     Value;
 stringify(Value, _Context, true) when is_list(Value) ->
@@ -114,7 +98,6 @@ stringify(Value, Context, Escape) when is_function(Value) ->
 escape(Value) ->
     escape(Value, []).
 
--spec escape(Value :: list(), Acc :: list()) -> iolist().
 escape([$< | Tail], Acc) ->
     escape(Tail, [<<"&lt;">> | Acc]);
 escape([$> | Tail], Acc) ->
