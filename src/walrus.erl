@@ -8,6 +8,8 @@
 -define(is_falsy(V),
     (V =:= false orelse V =:= ?DEFAULT_VALUE orelse V =:= undefined orelse V =:= null)).
 
+-record(state, {top, contexts, partials}).
+
 compile(Template) when is_binary(Template) ->
     compile(binary_to_list(Template));
 compile(Template) when is_list(Template) ->
@@ -15,65 +17,67 @@ compile(Template) when is_list(Template) ->
     {ok, ParseTree} = walrus_parser:parse(Tokens),
     {walrus_template, ParseTree}.
 
-
 render({walrus_template, ParseTree}, Context) ->
     render({walrus_template, ParseTree}, Context, {}).
 render({walrus_template, ParseTree}, Context, PartialsContext) ->
-    IOList = render_iolist(ParseTree, Context, [Context], PartialsContext, []),
+    State = #state{top=Context, contexts=[Context], partials=PartialsContext},
+    IOList = render_iolist(ParseTree, State, []),
     iolist_to_binary(IOList).
 
-
-render_iolist([{text, Text} | ParseTree], TopContext, ContextList, PartialsContext, Acc) ->
-    render_iolist(ParseTree, TopContext, ContextList, PartialsContext, [Text | Acc]);
-render_iolist([{var, Key} | ParseTree], TopContext, ContextList, PartialsContext, Acc) ->
-    Value = get(Key, ContextList),
-    Text = stringify(Value, TopContext, true),
-    render_iolist(ParseTree, TopContext, ContextList, PartialsContext, [Text | Acc]);
-render_iolist([{var_unescaped, Key} | ParseTree], TopContext, ContextList, PartialsContext, Acc) ->
-    Value = get(Key, ContextList),
-    Text = stringify(Value, TopContext, false),
-    render_iolist(ParseTree, TopContext, ContextList, PartialsContext, [Text | Acc]);
-render_iolist([{block, Key, SubParseTree} | ParseTree], TopContext, ContextList, PartialsContext, Acc) ->
-    Value = get(Key, ContextList),
+render_iolist([{text, Text} | ParseTree], State, Acc) ->
+    render_iolist(ParseTree, State, [Text | Acc]);
+render_iolist([{var, Key} | ParseTree], State, Acc) ->
+    Value = get(Key, State#state.contexts),
+    Text = stringify(Value, State#state.top, true),
+    render_iolist(ParseTree, State, [Text | Acc]);
+render_iolist([{var_unescaped, Key} | ParseTree], State, Acc) ->
+    Value = get(Key, State#state.contexts),
+    Text = stringify(Value, State#state.top, false),
+    render_iolist(ParseTree, State, [Text | Acc]);
+render_iolist([{block, Key, SubParseTree} | ParseTree], State, Acc) ->
+    Value = get(Key, State#state.contexts),
     case Value of
         Val when ?is_falsy(Val) -> %% just skip
-            render_iolist(ParseTree, TopContext, ContextList, PartialsContext, Acc);
+            render_iolist(ParseTree, State, Acc);
         List when is_list(List) ->
-            Tmpl = [render_iolist(SubParseTree, TopContext, [SubContext | ContextList], PartialsContext, [])
+            Contexts = State#state.contexts,
+            Text = [render_iolist(SubParseTree, State#state{contexts=[SubContext | Contexts]}, [])
                     || SubContext <- List],
-            render_iolist(ParseTree, TopContext, ContextList, PartialsContext, [Tmpl | Acc]);
+            render_iolist(ParseTree, State, [Text | Acc]);
         {bson, Document} ->
-            Tmpl = render_iolist(SubParseTree, TopContext, [{bson, Document} | ContextList], PartialsContext, []),
-            render_iolist(ParseTree, TopContext, ContextList, PartialsContext, [Tmpl | Acc]);
+            Contexts = State#state.contexts,
+            Text = render_iolist(SubParseTree, State#state{contexts=[{bson, Document} | Contexts]}, []),
+            render_iolist(ParseTree, State, [Text | Acc]);
         {proplist, List} ->
-            Tmpl = render_iolist(SubParseTree, TopContext, [{proplist, List} | ContextList], PartialsContext, []),
-            render_iolist(ParseTree, TopContext, ContextList, PartialsContext, [Tmpl | Acc]);
+            Contexts = State#state.contexts,
+            Text = render_iolist(SubParseTree, State#state{contexts=[{proplist, List} | Contexts]}, []),
+            render_iolist(ParseTree, State, [Text | Acc]);
         _ ->
-            Tmpl = render_iolist(SubParseTree, TopContext, ContextList, PartialsContext, []),
-            render_iolist(ParseTree, TopContext, ContextList, PartialsContext, [Tmpl | Acc])
+            Text = render_iolist(SubParseTree, State, []),
+            render_iolist(ParseTree, State, [Text | Acc])
     end;
-render_iolist([{inverse, Key, SubParseTree} | ParseTree], TopContext, ContextList, PartialsContext, Acc) ->
-    Value = get(Key, ContextList),
+render_iolist([{inverse, Key, SubParseTree} | ParseTree], State, Acc) ->
+    Value = get(Key, State#state.contexts),
     case Value of
         Val when ?is_falsy(Val) ->
-            Tmpl = render_iolist(SubParseTree, TopContext, ContextList, PartialsContext, []),
-            render_iolist(ParseTree, TopContext, ContextList, PartialsContext, [Tmpl | Acc]);
+            Text = render_iolist(SubParseTree, State, []),
+            render_iolist(ParseTree, State, [Text | Acc]);
         _ ->
-            render_iolist(ParseTree, TopContext, ContextList, PartialsContext, Acc)
+            render_iolist(ParseTree, State, Acc)
     end;
-render_iolist([{partial, Key} | ParseTree], TopContext, ContextList, PartialsContext, Acc) ->
-    Value = get(Key, [PartialsContext]),
+render_iolist([{partial, Key} | ParseTree], State, Acc) ->
+    Value = get(Key, [State#state.partials]),
     case Value of
         Fun when is_function(Fun, 1) ->
-            Text = Fun(TopContext),
-            render_iolist(ParseTree, TopContext, ContextList, PartialsContext, [Text | Acc]);
+            Text = Fun(State#state.top),
+            render_iolist(ParseTree, State, [Text | Acc]);
         Fun when is_function(Fun, 2) ->
-            Text = Fun(TopContext, PartialsContext),
-            render_iolist(ParseTree, TopContext, ContextList, PartialsContext, [Text | Acc]);
+            Text = Fun(State#state.top, State#state.partials),
+            render_iolist(ParseTree, State, [Text | Acc]);
         ?DEFAULT_VALUE ->
-            render_iolist(ParseTree, TopContext, ContextList, PartialsContext, Acc)
+            render_iolist(ParseTree, State, Acc)
     end;
-render_iolist([], _TopContext, _ContextList, _PartialsContext, Acc) ->
+render_iolist([], _State, Acc) ->
     lists:reverse(Acc).
 
 get(Key, [{bson, Document} | ContextList]) ->
