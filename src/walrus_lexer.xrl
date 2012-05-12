@@ -4,7 +4,7 @@ Key = [a-zA-Z0-9_]+
 
 Rules.
 
-{{!.*}} : skip_token.
+{{!([^{}]|(}[^}]))+}} : skip_token.
 ([^{}]|({[^{])|(}[^}]))+ : {token,{text,TokenLine,?ltb(TokenChars)}}.
 {{   : {token,{'{{',TokenLine}}.
 {{#  : {token,{'{{#',TokenLine}}.

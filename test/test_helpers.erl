@@ -19,8 +19,9 @@ run_examples(Examples) ->
         WalrusTemplate = walrus:compile(Template),
         Got = walrus:render(WalrusTemplate, Data),
         if Got =/= Expected ->
-            io:format("  Got ~w~n", [Got]),
-            io:format("  Expected: ~w~n", [Expected]);
+            io:format("  Got       ~w~n", [Got]),
+            io:format("  Expected: ~w~n", [Expected]),
+            Got = Expected;
            true             -> io:format("pass~n", [])
         end
     end, Examples).
