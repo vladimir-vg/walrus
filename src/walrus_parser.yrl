@@ -1,6 +1,6 @@
 Nonterminals template token var partial block inverse.
 
-Terminals text key '{{' '{{{' '{{#' '{{&' '{{>' '{{/' '{{^' '}}' '}}}'.
+Terminals text key cr lf '{{' '{{{' '{{#' '{{&' '{{>' '{{/' '{{^' '}}' '}}}'.
 
 Rootsymbol template.
 
